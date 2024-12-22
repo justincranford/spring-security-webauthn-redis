@@ -45,11 +45,11 @@ public final class ObjectMapperFactory {
 	private static final ClassLoader CLASS_LOADER = ObjectMapperFactory.class.getClassLoader();
 
 	public static ObjectMapper objectMapper(
-		final boolean addDefaultSecurityModules,
-		final boolean ignoreTrailingTokens,
-		final boolean overrideDefaultTypingFromDefaultModules,
-		final boolean addMissingSecurityModuleWebauthn,
-		final boolean addMyWebauthnMixins
+		final boolean addDefaultSecurityJacksonModules,
+		final boolean addMissingWebauthnJacksonModule,
+		final boolean addMissingWebauthnJacksonMixins,
+		final boolean overrideDefaultTypingFromDefaultJacksonSecurityModules,
+		final boolean ignoreTrailingTokensDuringJacksonDeserialize
 	) {
 		final ObjectMapper objectMapper = new ObjectMapper()
 			.registerModule(new JavaTimeModule())
@@ -70,32 +70,15 @@ public final class ObjectMapperFactory {
 			.configure(DeserializationFeature.ACCEPT_FLOAT_AS_INT, false)
 			;
 
-		if (addDefaultSecurityModules) {
+		if (addDefaultSecurityJacksonModules) {
 			objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
 		}
 
-		if (ignoreTrailingTokens) {
-			// Relax deserialization to handle this cryptic Collections$UnmodifiableRandomAccessList nested serialization:
-			//    "authorities" : [ "java.util.Collections$UnmodifiableRandomAccessList", [ {
-			//      "@class" : "org.springframework.security.core.authority.SimpleGrantedAuthority",
-			//      "authority" : "ROLE_ADM"
-			//    } ] ],
-			objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, false);
-		}
-
-		if (overrideDefaultTypingFromDefaultModules) {
-			objectMapper.activateDefaultTyping(
-				LaissezFaireSubTypeValidator.instance,
-				ObjectMapper.DefaultTyping.NON_FINAL,
-				JsonTypeInfo.As.PROPERTY
-			);
-		}
-
-		if (addMissingSecurityModuleWebauthn) {
+		if (addMissingWebauthnJacksonModule) {
 			objectMapper.registerModule(new WebauthnJackson2Module());
 		}
 
-		if (addMyWebauthnMixins) {
+		if (addMissingWebauthnJacksonMixins) {
 //          objectMapper.addMixIn(Bytes.class, WebauthnBytesMixIn.class);
 
 			objectMapper.addMixIn(PublicKeyCredentialCreationOptions.class, PublicKeyCredentialCreationOptionsMixIn.class);
@@ -119,6 +102,23 @@ public final class ObjectMapperFactory {
 //          objectMapper.addMixIn(AuthenticatorTransport.class, AuthenticatorTransportMixIn.class);
 			objectMapper.addMixIn(CredProtectAuthenticationExtensionsClientInput.class, CredProtectAuthenticationExtensionsClientInputMixIn.class);
 			objectMapper.addMixIn(CredProtect.class, CredProtectMixIn.class);
+		}
+
+		if (overrideDefaultTypingFromDefaultJacksonSecurityModules) {
+			objectMapper.activateDefaultTyping(
+				LaissezFaireSubTypeValidator.instance,
+				ObjectMapper.DefaultTyping.NON_FINAL,
+				JsonTypeInfo.As.PROPERTY
+			);
+		}
+
+		if (ignoreTrailingTokensDuringJacksonDeserialize) {
+			// Relax deserialization to handle this cryptic Collections$UnmodifiableRandomAccessList nested serialization:
+			//    "authorities" : [ "java.util.Collections$UnmodifiableRandomAccessList", [ {
+			//      "@class" : "org.springframework.security.core.authority.SimpleGrantedAuthority",
+			//      "authority" : "ROLE_ADM"
+			//    } ] ],
+			objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, false);
 		}
 
 		return objectMapper;

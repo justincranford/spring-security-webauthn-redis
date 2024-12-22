@@ -93,7 +93,7 @@ public class WebauthnMixinsIT {
 		@Configuration
 		public static class Config extends MyAbstractRedisClientConfig {
 			public Config() {
-				super(objectMapper(true, true, false, false, false));
+				super(objectMapper(true, false, false, false, true));
 			}
 		}
 
@@ -123,7 +123,7 @@ public class WebauthnMixinsIT {
 		@Configuration
 		public static class Config extends MyAbstractRedisClientConfig {
 			public Config() {
-				super(objectMapper(true, true, true, false, false));
+				super(objectMapper(true, false, false, true, true));
 			}
 		}
 
@@ -149,7 +149,7 @@ public class WebauthnMixinsIT {
 		@Configuration
 		public static class Config extends MyAbstractRedisClientConfig {
 			public Config() {
-				super(objectMapper(true, true, true, true, false));
+				super(objectMapper(true, true, false, true, true));
 			}
 		}
 
