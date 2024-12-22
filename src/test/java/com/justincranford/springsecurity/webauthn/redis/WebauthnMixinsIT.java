@@ -1,12 +1,14 @@
 package com.justincranford.springsecurity.webauthn.redis;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinsIT.MyRedisClientConfig;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinsIT.MyRedisServerConfig;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.ClassOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,21 +16,19 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.SerializationException;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.codec.Hex;
-import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module;
 import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.data.redis.RedisSessionRepository;
@@ -47,81 +47,125 @@ import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyC
 import static com.justincranford.springsecurity.webauthn.redis.Givens.usernamePasswordAuthenticationToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisServerConfig.class, MyRedisClientConfig.class })
+@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ WebauthnMixinsIT.MyRedisServerConfig.class })
+@TestClassOrder(ClassOrderer.OrderAnnotation.class)
 @ActiveProfiles({"test"})
 @Slf4j
-@SuppressWarnings({"unused", "rawtypes"})
+@SuppressWarnings({"unused"})
 public class WebauthnMixinsIT {
-	@Autowired
-	private SessionRepository sessionRepository;
+	private static final String REDIS_SERVER_ADDRESS = "localhost";
+	private static final int REDIS_SERVER_PORT = 6379;
 
-	@Test
-	public void demo_security_WebauthnJackson2Module_missingFrom_SecurityJackson2Modules_getModules() {
-		final ObjectMapper objectMapper = new ObjectMapper();
-
-		objectMapper.registerModules(SecurityJackson2Modules.getModules(this.getClass().getClassLoader()));
-		assertThat(objectMapper.getRegisteredModuleIds()).doesNotContain("org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module");
-
-		objectMapper.registerModule(new WebauthnJackson2Module()); // manually add it
-		assertThat(objectMapper.getRegisteredModuleIds()).contains("org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module");
+	@Configuration
+	public static class MyRedisServerConfig {
+		@Bean(initMethod="start", destroyMethod="stop")
+		public RedisServer redisServerEmbedded() throws IOException {
+			return new RedisServer(REDIS_SERVER_PORT);
+		}
 	}
 
-	@Test
-	public void doSerDesWithObjectMapper_webauthnRegisterChallenge_allFixes() throws JsonProcessingException {
-		final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);
-		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialCreationOptions());
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue1.RedisSerializerIssue1Config.class })
+	@Order(1)
+	@Nested
+	public class RedisSerializerIssue1 {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Configuration
+		public static class RedisSerializerIssue1Config extends MyAbstractRedisClientConfig {
+			public RedisSerializerIssue1Config() {
+				super(objectMapper(true, true, true, false, false));
+			}
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
+		}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
+		}
 	}
 
-	@Test
-	public void doSerDesWithObjectMapper_webauthnAuthenticateChallenge_allFixes() throws JsonProcessingException {
-		final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);
-		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialRequestOptions());
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue2.RedisSerializerIssue2Config.class })
+	@Order(2)
+	@Nested
+	public class RedisSerializerIssue2 {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Configuration
+		public static class RedisSerializerIssue2Config extends MyAbstractRedisClientConfig {
+			public RedisSerializerIssue2Config() {
+				super(objectMapper(true, true, true, true, false));
+			}
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Could not write JSON: Type id handling not implemented for type org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs (by serializer of type org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientInputsSerializer) (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions[\"extensions\"])");
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Could not write JSON: Type id handling not implemented for type org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs (by serializer of type org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientInputsSerializer) (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions[\"extensions\"])");
+		}
 	}
 
-	private static void doSerDesWithObjectMapper(final ObjectMapper objectMapper, final Object expected) throws JsonProcessingException {
-		final String serialized = objectMapper.writeValueAsString(expected);
-		log.info("Serialized: {}", serialized);
-		final Object actual = objectMapper.readValue(serialized, expected.getClass());
-		log.info("Deserialized: {}\n", actual);
-		assertThat(actual).isInstanceOf(expected.getClass());
-//		Assertions.assertEquals(expected, actual); // missing equals in WebAuthn challenge classes
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerWorkarounds.MyRedisClientConfigWorking.class })
+	@Order(3)
+	@Nested
+	public class RedisSerializerWorkarounds {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Configuration
+		public static class MyRedisClientConfigWorking extends MyAbstractRedisClientConfig {
+			public MyRedisClientConfigWorking() {
+				super(objectMapper(true, true, true, true, true));
+			}
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Object expected = publicKeyCredentialCreationOptions();
+			final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
+			assertThat(actual).isInstanceOf(expected.getClass());
+//			Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Object expected = publicKeyCredentialRequestOptions();
+			final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
+			assertThat(actual).isInstanceOf(expected.getClass());
+//			Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_securityContext_usernamePasswordAuthenticationToken() {
+			final UsernamePasswordAuthenticationToken expectedAuthentication = usernamePasswordAuthenticationToken();
+			final SecurityContext expectedSecurityContext = SecurityContextHolder.createEmptyContext();
+			expectedSecurityContext.setAuthentication(expectedAuthentication);
+
+			final SecurityContext actualSecurityContext = (SecurityContext) redisRepositorySaveFindById(this.sessionRepository, HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
+
+			assertThat(actualSecurityContext).isEqualTo(expectedSecurityContext);
+			final Authentication actualAuthentication = actualSecurityContext.getAuthentication();
+			assertThat(actualSecurityContext.getAuthentication()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
+			assertThat(actualAuthentication).isEqualTo(expectedAuthentication);
+		}
 	}
 
-	@Test
-	public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
-		final Object expected = publicKeyCredentialCreationOptions();
-		final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
-		assertThat(actual).isInstanceOf(expected.getClass());
-//		Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
-	}
-
-	@Test
-	public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
-		final Object expected = publicKeyCredentialRequestOptions();
-		final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
-		assertThat(actual).isInstanceOf(expected.getClass());
-//		Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
-	}
-
-	@Test
-	public void doSerDesWithRedisSerializer_securityContext_usernamePasswordAuthenticationToken() {
-		final UsernamePasswordAuthenticationToken expectedAuthentication = usernamePasswordAuthenticationToken();
-		final SecurityContext expectedSecurityContext = SecurityContextHolder.createEmptyContext();
-		expectedSecurityContext.setAuthentication(expectedAuthentication);
-
-		final SecurityContext actualSecurityContext = (SecurityContext) redisRepositorySaveFindById(this.sessionRepository, HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
-
-		assertThat(actualSecurityContext).isEqualTo(expectedSecurityContext);
-		final Authentication actualAuthentication = actualSecurityContext.getAuthentication();
-		assertThat(actualSecurityContext.getAuthentication()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
-		assertThat(actualAuthentication).isEqualTo(expectedAuthentication);
-	}
-
-	@SuppressWarnings({"unchecked"})
 	private static Object redisRepositorySaveFindById(final SessionRepository sessionRepository, final String key, final Object value) {
 		final Session session = sessionRepository.createSession();
-
 		session.setAttribute(key, value);
+
 		final String sessionId = session.getId();
 		log.info("Session ID (Base64-URL): {}", sessionId);
 		final byte[] sessionIdBytes = Base64.getUrlDecoder().decode(sessionId);
@@ -137,25 +181,18 @@ public class WebauthnMixinsIT {
 		return retrievedValue;
 	}
 
-	@Configuration
-	public static class MyRedisServerConfig {
-		@Bean(initMethod="start",destroyMethod="stop")
-		public RedisServer redisServerEmbedded(final Environment environment) throws IOException {
-			return new RedisServer(6379);
-		}
-	}
+	@RequiredArgsConstructor
+	public static abstract class MyAbstractRedisClientConfig {
+		private final ObjectMapper objectMapper;
 
-	@Configuration
-	public static class MyRedisClientConfig {
 		@Bean
 		public RedisSerializer<Object> springSessionDefaultRedisSerializer() {
-			final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);
-			return GenericJackson2JsonRedisSerializer.builder().objectMapper(objectMapper).build();
+			return GenericJackson2JsonRedisSerializer.builder().objectMapper(this.objectMapper).build();
 		}
 
 		@Bean
 		public LettuceConnectionFactory redisConnectionFactory() {
-			return new LettuceConnectionFactory("localhost", 6379);
+			return new LettuceConnectionFactory(REDIS_SERVER_ADDRESS, REDIS_SERVER_PORT);
 		}
 
 		@Bean

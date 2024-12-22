@@ -63,12 +63,14 @@ public final class Givens {
 
 	public static ObjectMapper objectMapper(
 		final boolean addDefaultSecurityModules,
-		final boolean addMissingSecurityModuleWebauthn,
-		final boolean overrideDefaultTypingFromDefaultModules,
 		final boolean relaxTrainingTokensConstraint,
+		final boolean overrideDefaultTypingFromDefaultModules,
+		final boolean addMissingSecurityModuleWebauthn,
 		final boolean addMyWebauthnMixins
 	) {
 		final ObjectMapper objectMapper = new ObjectMapper()
+			.registerModule(new JavaTimeModule())
+			.registerModule(new Jdk8Module())
 			.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
 			.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION)
 			.configure(SerializationFeature.INDENT_OUTPUT, true)
@@ -85,38 +87,8 @@ public final class Givens {
 			.configure(DeserializationFeature.ACCEPT_FLOAT_AS_INT, false)
 			;
 
-		// verify modules is empty
-		assertThat(objectMapper.getRegisteredModuleIds()).isEmpty();
-
 		if (addDefaultSecurityModules) {
 			objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
-			// verify modules added via SecurityJackson2Modules.getModules()
-			assertThat(objectMapper.getRegisteredModuleIds()).containsExactly(
-				"org.springframework.security.jackson2.CoreJackson2Module",
-				"org.springframework.security.web.jackson2.WebJackson2Module",
-				"org.springframework.security.web.server.jackson2.WebServerJackson2Module",
-				"org.springframework.security.web.jackson2.WebServletJackson2Module",
-				"jackson-datatype-jsr310"
-			);
-			assertThat(objectMapper.getRegisteredModuleIds()).doesNotContain("org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module");
-		}
-
-		if (addMissingSecurityModuleWebauthn) {
-			objectMapper.registerModule(new WebauthnJackson2Module());
-			assertThat(objectMapper.getRegisteredModuleIds()).contains(
-				"org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module"
-			);
-		}
-
-		objectMapper.registerModule(new JavaTimeModule());
-		objectMapper.registerModule(new Jdk8Module());
-
-		if (overrideDefaultTypingFromDefaultModules) {
-			objectMapper.activateDefaultTyping(
-				LaissezFaireSubTypeValidator.instance,
-				ObjectMapper.DefaultTyping.NON_FINAL,
-				JsonTypeInfo.As.PROPERTY
-			);
 		}
 
 		if (relaxTrainingTokensConstraint) {
@@ -126,6 +98,18 @@ public final class Givens {
 			//      "authority" : "ROLE_ADM"
 			//    } ] ],
 			objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, false);
+		}
+
+		if (overrideDefaultTypingFromDefaultModules) {
+			objectMapper.activateDefaultTyping(
+				LaissezFaireSubTypeValidator.instance,
+				ObjectMapper.DefaultTyping.NON_FINAL,
+				JsonTypeInfo.As.PROPERTY
+			);
+		}
+
+		if (addMissingSecurityModuleWebauthn) {
+			objectMapper.registerModule(new WebauthnJackson2Module());
 		}
 
 		if (addMyWebauthnMixins) {
