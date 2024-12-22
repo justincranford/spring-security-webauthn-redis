@@ -53,137 +53,127 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Slf4j
 @SuppressWarnings({"unused"})
 public class WebauthnMixinsIT {
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue1.Config.class })
+	// ObjectMapper instances with 0-5 fixes to be injected into Redis Configuration classes
+	private static final ObjectMapper OBJECT_MAPPER0 = objectMapper(false, false, false, false, false);
+	private static final ObjectMapper OBJECT_MAPPER1 = objectMapper(true,  false, false, false, false);
+	private static final ObjectMapper OBJECT_MAPPER2 = objectMapper(true,  true,  false, false, false);
+	private static final ObjectMapper OBJECT_MAPPER3 = objectMapper(true,  true,  true,  false, false);
+	private static final ObjectMapper OBJECT_MAPPER4 = objectMapper(true,  true,  true,  true,  false);
+	private static final ObjectMapper OBJECT_MAPPER5 = objectMapper(true,  true,  true,  true,  true);
+
+	@Configuration public static class MyRedisClientConfig0 extends MyAbstractRedisClientConfig { public MyRedisClientConfig0() { super(OBJECT_MAPPER0); } }
+	@Configuration public static class MyRedisClientConfig1 extends MyAbstractRedisClientConfig { public MyRedisClientConfig1() { super(OBJECT_MAPPER1); } }
+	@Configuration public static class MyRedisClientConfig2 extends MyAbstractRedisClientConfig { public MyRedisClientConfig2() { super(OBJECT_MAPPER2); } }
+	@Configuration public static class MyRedisClientConfig3 extends MyAbstractRedisClientConfig { public MyRedisClientConfig3() { super(OBJECT_MAPPER3); } }
+	@Configuration public static class MyRedisClientConfig4 extends MyAbstractRedisClientConfig { public MyRedisClientConfig4() { super(OBJECT_MAPPER4); } }
+	@Configuration public static class MyRedisClientConfig5 extends MyAbstractRedisClientConfig { public MyRedisClientConfig5() { super(OBJECT_MAPPER5); } }
+
+	@Order(0)
+	@Nested
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisClientConfig0.class })
+	public class ObjectMapperIssue_0Workarounds {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final AssertionError e = Assertions.assertThrows(AssertionError.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage().replaceAll("\r", "")).contains("to be an instance of:\n  org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions\nbut was instance of:\n  java.util.LinkedHashMap");
+		}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final AssertionError e = Assertions.assertThrows(AssertionError.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage().replaceAll("\r", "")).contains("to be an instance of:\n  org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions\nbut was instance of:\n  java.util.LinkedHashMap");
+		}
+	}
+
 	@Order(1)
 	@Nested
-	public class RedisSerializerIssue1 {
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisClientConfig1.class })
+	public class ObjectMapperIssue_1Workaround {
 		@Autowired
 		private SessionRepository sessionRepository;
 
-		@Configuration
-		public static class Config extends MyAbstractRedisClientConfig {
-			public Config() {
-				super(objectMapper(true, false, false, false, false));
-			}
-		}
-
 		@Test
 		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
 			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
 		}
 		@Test
 		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
 			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
 		}
 	}
 
-	/**
-	 * This is insufficient to use Jackson JSON serialization in RedisSessionRepository for Spring Security WebAuthn classes.
-	 * objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
-	 */
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue2.Config.class })
 	@Order(2)
 	@Nested
-	public class RedisSerializerIssue2 {
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisClientConfig2.class })
+	public class ObjectMapperIssue_2Workarounds {
 		@Autowired
 		private SessionRepository sessionRepository;
 
-		@Configuration
-		public static class Config extends MyAbstractRedisClientConfig {
-			public Config() {
-				super(objectMapper(true, false, false, false, true));
-			}
-		}
-
 		@Test
 		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
-			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
-		}
-		@Test
-		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
-			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
-		}
-	}
-
-	/**
-	 * This is insufficient to use Jackson JSON serialization in RedisSessionRepository for Spring Security WebAuthn classes.
-	 * objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
-	 */
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue3.Config.class })
-	@Order(3)
-	@Nested
-	public class RedisSerializerIssue3 {
-		@Autowired
-		private SessionRepository sessionRepository;
-
-		@Configuration
-		public static class Config extends MyAbstractRedisClientConfig {
-			public Config() {
-				super(objectMapper(true, false, false, true, true));
-			}
-		}
-
-		@Test
-		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
-			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
-		}
-		@Test
-		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
-			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
-		}
-	}
-
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue4.Config.class })
-	@Order(4)
-	@Nested
-	public class RedisSerializerIssue4 {
-		@Autowired
-		private SessionRepository sessionRepository;
-
-		@Configuration
-		public static class Config extends MyAbstractRedisClientConfig {
-			public Config() {
-				super(objectMapper(true, true, false, true, true));
-			}
-		}
-
-		@Test
-		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
 			assertThat(e.getMessage()).startsWith("Could not write JSON: Type id handling not implemented for type org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs (by serializer of type org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientInputsSerializer) (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions[\"extensions\"])");
 		}
-
 		@Test
 		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
-			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
 			assertThat(e.getMessage()).startsWith("Could not write JSON: Type id handling not implemented for type org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs (by serializer of type org.springframework.security.web.webauthn.jackson.AuthenticationExtensionsClientInputsSerializer) (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions[\"extensions\"])");
 		}
 	}
 
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerWorkarounds.Config.class })
-	@Order(5)
+	@Order(3)
 	@Nested
-	public class RedisSerializerWorkarounds {
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisClientConfig3.class })
+	public class ObjectMapperIssue_3Workarounds {
 		@Autowired
 		private SessionRepository sessionRepository;
 
-		@Configuration
-		public static class Config extends MyAbstractRedisClientConfig {
-			public Config() {
-				super(objectMapper(true, true, true, true, true));
-			}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:The class with java.util.ImmutableCollections$ListN and name of java.util.ImmutableCollections$ListN is not in the allowlist. If you believe this class is safe to deserialize, please provide an explicit mapping using Jackson annotations or by providing a Mixin. If the serialization is only done by a trusted source, you can also enable default typing. See https://github.com/spring-projects/spring-security/issues/4370 for details (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions[\"pubKeyCredParams\"]) ");
 		}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:The class with java.util.ImmutableCollections$List12 and name of java.util.ImmutableCollections$List12 is not in the allowlist. If you believe this class is safe to deserialize, please provide an explicit mapping using Jackson annotations or by providing a Mixin. If the serialization is only done by a trusted source, you can also enable default typing. See https://github.com/spring-projects/spring-security/issues/4370 for details (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions[\"allowCredentials\"]) ");
+		}
+	}
+
+	@Order(4)
+	@Nested
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisClientConfig4.class })
+	public class ObjectMapperIssue_4Workarounds {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Trailing token (of type FIELD_NAME) found after value (bound as `java.lang.String`): not allowed as per `DeserializationFeature.FAIL_ON_TRAILING_TOKENS`");
+		}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepository_save_then_findById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Trailing token (of type FIELD_NAME) found after value (bound as `java.lang.String`): not allowed as per `DeserializationFeature.FAIL_ON_TRAILING_TOKENS`");
+		}
+	}
+
+	@Order(5)
+	@Nested
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisClientConfig5.class })
+	public class RedisSerializerWorking_5Workarounds {
+		@Autowired
+		private SessionRepository sessionRepository;
 
 		@Test
 		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
 			final Object expected = publicKeyCredentialCreationOptions();
-			final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
+			final Object actual = redisRepository_save_then_findById(this.sessionRepository, "whatever", expected);
 			assertThat(actual).isInstanceOf(expected.getClass());
 //			Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
 		}
@@ -191,7 +181,7 @@ public class WebauthnMixinsIT {
 		@Test
 		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
 			final Object expected = publicKeyCredentialRequestOptions();
-			final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
+			final Object actual = redisRepository_save_then_findById(this.sessionRepository, "whatever", expected);
 			assertThat(actual).isInstanceOf(expected.getClass());
 //			Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
 		}
@@ -202,7 +192,7 @@ public class WebauthnMixinsIT {
 			final SecurityContext expectedSecurityContext = SecurityContextHolder.createEmptyContext();
 			expectedSecurityContext.setAuthentication(expectedAuthentication);
 
-			final SecurityContext actualSecurityContext = (SecurityContext) redisRepositorySaveFindById(this.sessionRepository, HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
+			final SecurityContext actualSecurityContext = (SecurityContext) redisRepository_save_then_findById(this.sessionRepository, HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
 
 			assertThat(actualSecurityContext).isEqualTo(expectedSecurityContext);
 			final Authentication actualAuthentication = actualSecurityContext.getAuthentication();
@@ -211,7 +201,7 @@ public class WebauthnMixinsIT {
 		}
 	}
 
-	private static Object redisRepositorySaveFindById(final SessionRepository sessionRepository, final String key, final Object value) {
+	private static Object redisRepository_save_then_findById(final SessionRepository sessionRepository, final String key, final Object value) {
 		final Session session = sessionRepository.createSession();
 		session.setAttribute(key, value);
 
@@ -230,6 +220,7 @@ public class WebauthnMixinsIT {
 		return retrievedValue;
 	}
 
+	// Inject different ObjectMapper instances to be used by RedisSerializer<Object>, for setHashValueSerializer and setValueSerializer
 	@RequiredArgsConstructor
 	public static abstract class MyAbstractRedisClientConfig {
 		private final ObjectMapper objectMapper;
@@ -252,10 +243,10 @@ public class WebauthnMixinsIT {
 			final StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
 			final RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 			redisTemplate.setConnectionFactory(redisConnectionFactory);
-			redisTemplate.setKeySerializer(stringRedisSerializer);
 			redisTemplate.setHashKeySerializer(stringRedisSerializer);
-			redisTemplate.setValueSerializer(springSessionDefaultRedisSerializer);
+			redisTemplate.setKeySerializer(stringRedisSerializer);
 			redisTemplate.setHashValueSerializer(springSessionDefaultRedisSerializer);
+			redisTemplate.setValueSerializer(springSessionDefaultRedisSerializer);
 			redisTemplate.setDefaultSerializer(springSessionDefaultRedisSerializer);
 			log.info("redisTemplate: {}", redisTemplate);
 			return redisTemplate;
