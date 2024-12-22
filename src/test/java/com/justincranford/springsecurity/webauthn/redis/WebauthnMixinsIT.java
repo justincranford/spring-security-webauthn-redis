@@ -35,35 +35,24 @@ import org.springframework.session.data.redis.RedisSessionRepository;
 import org.springframework.session.data.redis.config.annotation.SpringSessionRedisConnectionFactory;
 import org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration;
 import org.springframework.test.context.ActiveProfiles;
-import redis.embedded.RedisServer;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
 
+import static com.justincranford.springsecurity.webauthn.redis.EmbeddedRedisServerConfig.REDIS_SERVER_ADDRESS;
+import static com.justincranford.springsecurity.webauthn.redis.EmbeddedRedisServerConfig.REDIS_SERVER_PORT;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.objectMapper;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.usernamePasswordAuthenticationToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ WebauthnMixinsIT.MyRedisServerConfig.class })
+@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ EmbeddedRedisServerConfig.class })
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 @ActiveProfiles({"test"})
 @Slf4j
 @SuppressWarnings({"unused"})
 public class WebauthnMixinsIT {
-	private static final String REDIS_SERVER_ADDRESS = "localhost";
-	private static final int REDIS_SERVER_PORT = 6379;
-
-	@Configuration
-	public static class MyRedisServerConfig {
-		@Bean(initMethod="start", destroyMethod="stop")
-		public RedisServer redisServerEmbedded() throws IOException {
-			return new RedisServer(REDIS_SERVER_PORT);
-		}
-	}
-
 	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue1.Config.class })
 	@Order(1)
 	@Nested
