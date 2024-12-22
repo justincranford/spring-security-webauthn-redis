@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.Bean;
@@ -23,11 +22,12 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.codec.Hex;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module;
 import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.data.redis.RedisSessionRepository;
@@ -54,26 +54,28 @@ public class WebauthnMixinsIT {
 	@Autowired
 	private SessionRepository sessionRepository;
 
+	// Demo SecurityJackson2Modules.getModules() is missing the security module `WebauthnJackson2Module`
 	@Test
-	public void demoMissing_WebauthnJackson2Module() throws JsonProcessingException {
-		objectMapper(true, true, false, false, false);
+	public void demo_WebauthnJackson2Module_missingFrom_SecurityJackson2Modules_getModules() {
+		final ObjectMapper objectMapper = new ObjectMapper();
+
+		objectMapper.registerModules(SecurityJackson2Modules.getModules(this.getClass().getClassLoader()));
+		assertThat(objectMapper.getRegisteredModuleIds()).doesNotContain("org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module");
+
+		objectMapper.registerModule(new WebauthnJackson2Module()); // manually add it
+		assertThat(objectMapper.getRegisteredModuleIds()).contains("org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module");
 	}
 
 	@Test
-	public void doSerDesWithObjectMapper_webauthnRegisterChallenge_fixed() throws JsonProcessingException {
+	public void doSerDesWithObjectMapper_webauthnRegisterChallenge_allFixes() throws JsonProcessingException {
 		final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);
 		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialCreationOptions());
 	}
 
 	@Test
-	public void doSerDesWithObjectMapper_webauthnAuthenticateChallenge_fixed() throws JsonProcessingException {
+	public void doSerDesWithObjectMapper_webauthnAuthenticateChallenge_allFixes() throws JsonProcessingException {
 		final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);
 		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialRequestOptions());
-	}
-
-	@Test
-	public void doServerWithRedisSerializer_usernamePasswordAuthenticationToken() {
-		doSerDesWithRedisRepository(this.sessionRepository, usernamePasswordAuthenticationToken());
 	}
 
 	private static void doSerDesWithObjectMapper(final ObjectMapper objectMapper, final Object object) throws JsonProcessingException {
@@ -84,35 +86,50 @@ public class WebauthnMixinsIT {
 //		Assertions.assertEquals(object, deserialized);
 	}
 
-	@SuppressWarnings({"unchecked"})
-	private static void doSerDesWithRedisRepository(final SessionRepository sessionRepository, final Authentication expectedAuthentication) {
-		// Create SecurityContext
+	@Test
+	public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+		final Object expected = publicKeyCredentialCreationOptions();
+		final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
+		assertThat(actual).isInstanceOf(expected.getClass());
+	}
+
+	@Test
+	public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+		final Object expected = publicKeyCredentialRequestOptions();
+		final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
+		assertThat(actual).isInstanceOf(expected.getClass());
+	}
+
+	@Test
+	public void doSerDesWithRedisSerializer_securityContext_usernamePasswordAuthenticationToken() {
+		final UsernamePasswordAuthenticationToken expectedAuthentication = usernamePasswordAuthenticationToken();
 		final SecurityContext expectedSecurityContext = SecurityContextHolder.createEmptyContext();
 		expectedSecurityContext.setAuthentication(expectedAuthentication);
 
-		// Persist SecurityContext; serialized in Redis
+		final SecurityContext actualSecurityContext = (SecurityContext) redisRepositorySaveFindById(this.sessionRepository, HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
+		final Authentication actualAuthentication = actualSecurityContext.getAuthentication();
+		assertThat(actualSecurityContext.getAuthentication()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
+		assertThat(actualAuthentication).isEqualTo(expectedAuthentication);
+	}
+
+	@SuppressWarnings({"unchecked"})
+	private static Object redisRepositorySaveFindById(final SessionRepository sessionRepository, final String key, final Object value) {
 		final Session session = sessionRepository.createSession();
-		session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
-		sessionRepository.save(session);
+
+		session.setAttribute(key, value);
 		final String sessionId = session.getId();
 		log.info("Session ID (Base64-URL): {}", sessionId);
 		final byte[] sessionIdBytes = Base64.getUrlDecoder().decode(sessionId);
 		log.info("Session ID (HEX):        {}", Hex.encode(sessionIdBytes));
 
-		// Read SecurityContext, deserialized from Redis
-		final Session retrievedSession = sessionRepository.findById(sessionId);
+		sessionRepository.save(session); // serialize
+		final Session retrievedSession = sessionRepository.findById(sessionId); // deserialize
+
 		assertThat(retrievedSession).isNotNull();
+		final Object retrievedValue = retrievedSession.getAttribute(key);
+		assertThat(retrievedValue).isInstanceOf(value.getClass());
 
-		// Compare read SecurityContext to created SecurityContext
-		final Object deserializedSecurityContext = retrievedSession.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
-		assertThat(deserializedSecurityContext).isInstanceOf(SecurityContext.class);
-		final SecurityContext actualSecurityContext = (SecurityContext) deserializedSecurityContext;
-		assertThat(actualSecurityContext.getAuthentication()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
-
-		// Compare read Authentication to created Authentication
-		final Authentication actualAuthentication = actualSecurityContext.getAuthentication();
-		assertThat(actualAuthentication).isEqualTo(expectedAuthentication);
-		assertThat(actualAuthentication.getAuthorities()).extracting(GrantedAuthority::getAuthority).containsExactly("ROLE_ADM");
+		return retrievedValue;
 	}
 
 	@Configuration
@@ -126,14 +143,20 @@ public class WebauthnMixinsIT {
 	@Configuration
 	public static class MyRedisClientConfig {
 		@Bean
+		public RedisSerializer<Object> springSessionDefaultRedisSerializer() {
+			final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);
+			return GenericJackson2JsonRedisSerializer.builder().objectMapper(objectMapper).build();
+		}
+
+		@Bean
 		public LettuceConnectionFactory redisConnectionFactory() {
 			return new LettuceConnectionFactory("localhost", 6379);
 		}
 
 		@Bean
 		public RedisTemplate<String, Object> sessionRedisTemplate(
-			final LettuceConnectionFactory redisConnectionFactory,
-			final RedisSerializer<Object> springSessionDefaultRedisSerializer
+			final RedisSerializer<Object> springSessionDefaultRedisSerializer,
+			final LettuceConnectionFactory redisConnectionFactory
 		) {
 			final StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
 			final RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
@@ -148,13 +171,18 @@ public class WebauthnMixinsIT {
 		}
 
 		@Bean
+		public RedisSessionRepository redisSessionRepository(final RedisTemplate<String, Object> sessionRedisTemplate) {
+			return new RedisSessionRepository(sessionRedisTemplate);
+		}
+
+		@Bean
 		public RedisHttpSessionConfiguration redisHttpSessionConfiguration(
-			@SpringSessionRedisConnectionFactory ObjectProvider<RedisConnectionFactory> springSessionRedisConnectionFactory,
-			RedisSerializer<Object> springSessionDefaultRedisSerializer,
-			final RedisConnectionFactory redisConnectionFactory
+			final RedisSerializer<Object> springSessionDefaultRedisSerializer,
+			final RedisConnectionFactory redisConnectionFactory,
+			@SpringSessionRedisConnectionFactory final ObjectProvider<RedisConnectionFactory> springSessionRedisConnectionFactory
 		) {
 			final RedisHttpSessionConfiguration config = new RedisHttpSessionConfiguration();
-			config.setSessionIdGenerator(new CustomSessionIdGenerator());
+			config.setSessionIdGenerator(new MySessionIdGenerator());
 			config.setMaxInactiveInterval(Duration.ofSeconds(7));
 			config.setRedisNamespace("test");
 			config.setDefaultRedisSerializer(springSessionDefaultRedisSerializer);
@@ -166,22 +194,6 @@ public class WebauthnMixinsIT {
 			};
 			config.setRedisConnectionFactory(objectProvider, objectProvider);
 			return config;
-		}
-
-		@Bean(name="springSessionDefaultRedisSerializer")
-		public RedisSerializer<Object> springSessionDefaultRedisSerializer(@Qualifier("springSessionDefaultObjectMapper") final ObjectMapper springSessionDefaultObjectMapper) {
-			return GenericJackson2JsonRedisSerializer.builder().objectMapper(springSessionDefaultObjectMapper).build();
-		}
-
-		@Qualifier("springSessionDefaultObjectMapper")
-		@Bean
-		public ObjectMapper springSessionDefaultObjectMapper() {
-			return objectMapper(true, true, true, true, true);
-		}
-
-		@Bean
-		public RedisSessionRepository redisSessionRepository(final RedisTemplate<String, Object> sessionRedisTemplate) {
-			return new RedisSessionRepository(sessionRedisTemplate);
 		}
 	}
 }
