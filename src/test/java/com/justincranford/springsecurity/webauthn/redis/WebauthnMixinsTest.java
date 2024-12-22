@@ -15,9 +15,9 @@ import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.objectMapper;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
+import static com.justincranford.springsecurity.webauthn.redis.ObjectMapperFactory.objectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)

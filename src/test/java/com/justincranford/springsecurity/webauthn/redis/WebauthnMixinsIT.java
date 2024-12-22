@@ -41,10 +41,10 @@ import java.util.Base64;
 
 import static com.justincranford.springsecurity.webauthn.redis.EmbeddedRedisServerConfig.REDIS_SERVER_ADDRESS;
 import static com.justincranford.springsecurity.webauthn.redis.EmbeddedRedisServerConfig.REDIS_SERVER_PORT;
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.objectMapper;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
 import static com.justincranford.springsecurity.webauthn.redis.MyGivens.usernamePasswordAuthenticationToken;
+import static com.justincranford.springsecurity.webauthn.redis.ObjectMapperFactory.objectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ EmbeddedRedisServerConfig.class })
@@ -79,6 +79,10 @@ public class WebauthnMixinsIT {
 		}
 	}
 
+	/**
+	 * This is insufficient to use Jackson JSON serialization in RedisSessionRepository for Spring Security WebAuthn classes.
+	 * objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
+	 */
 	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue2.Config.class })
 	@Order(2)
 	@Nested
@@ -105,6 +109,10 @@ public class WebauthnMixinsIT {
 		}
 	}
 
+	/**
+	 * This is insufficient to use Jackson JSON serialization in RedisSessionRepository for Spring Security WebAuthn classes.
+	 * objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
+	 */
 	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue3.Config.class })
 	@Order(3)
 	@Nested
