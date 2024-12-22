@@ -10,16 +10,17 @@ import java.util.Base64;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Similar goal as UUID Type 7, but with security and usability enhancements.
- * Timestamp bytes is bucketed as 1 hour intervals, to prevent an adversary from guessing precise timing.
- * Randomness is increased to 32-bytes, the minimum for NIST to consider it sufficiently unique.
- * Append an unsigned short counter, to assist debugging within an instance of an application (e.g. 0001, ..., FFFE, FFFF, 0000, ...).
- * Base64-URL encoded, for use as a web session id cookie value, URL magic link query parameter, JWT jti/nonce, etc.
- * Data structure is...
+ * Similar goal as UUID Type 7, but with improved security and enhanced usability.
+ * Timestamp prefix ensures ordering, and bucketed as 1 hour intervals to prevent guessing precise times.
+ * Randomness suffix is increased to 32-bytes, the minimum for NIST to consider it sufficiently unique to be secure.
+ * Unsigned short counter extra suffix assisted debugging within each instance of an application (e.g. 0001, ..., FFFE, FFFF, 0000, ...).
+ * Base64-URL encoding makes it useful as web session id cookie value, URL magic link query parameter, JWT jti/nonce, etc.
+ * Binary data structure is...
  * Bytes (42):  timestamp bucket (8-bytes), random (32-bytes), rollover counter (2-bytes)
+ * String encoding size is...
  * String (56): 42 bytes * 4 / 3 => 56 base64-url characters
  */
-public class CustomSessionIdGenerator implements SessionIdGenerator {
+public class MySessionIdGenerator implements SessionIdGenerator {
 	private static final long TIMESTAMP_GRANULARITY = 3600L; // 1 hour granularity
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 	private static final AtomicInteger COUNTER = new AtomicInteger(1);
