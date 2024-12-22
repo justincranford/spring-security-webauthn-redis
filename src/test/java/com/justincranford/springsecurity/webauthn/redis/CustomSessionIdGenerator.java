@@ -24,9 +24,11 @@ public class CustomSessionIdGenerator implements SessionIdGenerator {
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 	private static final AtomicInteger COUNTER = new AtomicInteger(1);
 	private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
+
 	public String generate() {
 		return ENCODER.encodeToString(generateBytes());
 	}
+
 	public byte[] generateBytes() {
 		final long timestampBucket = Instant.now().getEpochSecond() / TIMESTAMP_GRANULARITY;
 		final int  rolloverCounter = COUNTER.getAndIncrement();

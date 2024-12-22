@@ -1,16 +1,20 @@
 package com.justincranford.springsecurity.webauthn.redis;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.webauthn.api.AttestationConveyancePreference;
 import org.springframework.security.web.webauthn.api.AuthenticatorAttachment;
 import org.springframework.security.web.webauthn.api.AuthenticatorSelectionCriteria;
@@ -36,9 +40,12 @@ import java.util.List;
 import java.util.Set;
 
 @NoArgsConstructor(access=AccessLevel.PRIVATE)
+@Slf4j
 public final class Givens {
+	private static final ClassLoader CLASS_LOADER = Givens.class.getClassLoader();
+
 	public static ObjectMapper objectMapper() {
-		return new ObjectMapper()
+		final ObjectMapper objectMapper = new ObjectMapper()
 		.registerModule(new JavaTimeModule())
 		.registerModule(new Jdk8Module())
 		.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
@@ -56,6 +63,24 @@ public final class Givens {
 		.configure(DeserializationFeature.FAIL_ON_UNEXPECTED_VIEW_PROPERTIES, true)
 		.configure(DeserializationFeature.ACCEPT_FLOAT_AS_INT, false)
 		;
+
+		// Registers CoreJackson2Module (e.g. SimpleGrantedAuthorityMixin) and many others
+		objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
+//		log.info("ObjectMapper Registered Module IDs: {}", objectMapper.getRegisteredModuleIds());
+
+		// Relax deserialization to handle this cryptic Collections$UnmodifiableRandomAccessList nested serialization:
+		//    "authorities" : [ "java.util.Collections$UnmodifiableRandomAccessList", [ {
+		//      "@class" : "org.springframework.security.core.authority.SimpleGrantedAuthority",
+		//      "authority" : "ROLE_ADM"
+		//    } ] ],
+		objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, false);
+
+		objectMapper.activateDefaultTyping(
+			LaissezFaireSubTypeValidator.instance,
+			ObjectMapper.DefaultTyping.NON_FINAL,
+			JsonTypeInfo.As.PROPERTY
+		);
+		return objectMapper;
 	}
 
 	public static UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken() {

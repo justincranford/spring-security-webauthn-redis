@@ -5,8 +5,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinIT.MyRedisClient;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinIT.MyRedisServer;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.AuthenticationExtensionsClientInputMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.AuthenticationExtensionsClientInputsMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.AuthenticatorSelectionCriteriaMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.CredProtectAuthenticationExtensionsClientInputMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.CredProtectMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialCreationOptionsMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialDescriptorMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialParametersMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialRequestOptionsMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialRpEntityMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialUserEntityMixIn;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinsIT.MyRedisClientConfig;
+import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinsIT.MyRedisServerConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -17,6 +28,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -32,7 +44,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.codec.Hex;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInput;
+import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs;
+import org.springframework.security.web.webauthn.api.AuthenticatorSelectionCriteria;
+import org.springframework.security.web.webauthn.api.CredProtectAuthenticationExtensionsClientInput;
+import org.springframework.security.web.webauthn.api.CredProtectAuthenticationExtensionsClientInput.CredProtect;
+import org.springframework.security.web.webauthn.api.ImmutableAuthenticationExtensionsClientInputs;
+import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialDescriptor;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialParameters;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
+import org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module;
 import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.data.redis.RedisSessionRepository;
@@ -44,6 +69,7 @@ import redis.embedded.RedisServer;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Set;
 
 import static com.justincranford.springsecurity.webauthn.redis.Givens.objectMapper;
 import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyCredentialCreationOptions;
@@ -51,22 +77,57 @@ import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyC
 import static com.justincranford.springsecurity.webauthn.redis.Givens.usernamePasswordAuthenticationToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment=WebEnvironment.NONE,classes = { MyRedisServer.class, MyRedisClient.class})
+@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ MyRedisServerConfig.class, MyRedisClientConfig.class })
 @ActiveProfiles({"test"})
 @Slf4j
 @SuppressWarnings({"unused", "rawtypes"})
-public class WebauthnMixinIT {
+public class WebauthnMixinsIT {
 	@Autowired
 	private SessionRepository sessionRepository;
 
 	@Test
+	public void demoMissing_WebauthnJackson2Module() throws JsonProcessingException {
+		final ObjectMapper objectMapper = new ObjectMapper();
+
+		assertThat(objectMapper.getRegisteredModuleIds()).isEmpty();
+
+		// verify modules added via SecurityJackson2Modules.getModules()
+		objectMapper.registerModules(SecurityJackson2Modules.getModules(this.getClass().getClassLoader()));
+		assertThat(objectMapper.getRegisteredModuleIds()).containsExactly(
+			"org.springframework.security.jackson2.CoreJackson2Module",
+			"org.springframework.security.web.jackson2.WebJackson2Module",
+			"org.springframework.security.web.server.jackson2.WebServerJackson2Module",
+			"org.springframework.security.web.jackson2.WebServletJackson2Module",
+			"jackson-datatype-jsr310"
+		);
+		assertThat(objectMapper.getRegisteredModuleIds()).doesNotContain("org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module");
+
+		// verify modules after manually adding WebauthnJackson2Module
+		objectMapper.registerModule(new WebauthnJackson2Module());
+		assertThat(objectMapper.getRegisteredModuleIds()).containsExactly(
+			"org.springframework.security.jackson2.CoreJackson2Module",
+			"org.springframework.security.web.jackson2.WebJackson2Module",
+			"org.springframework.security.web.server.jackson2.WebServerJackson2Module",
+			"org.springframework.security.web.jackson2.WebServletJackson2Module",
+			"jackson-datatype-jsr310",
+			"org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module"
+		);
+	}
+
+	@Test
 	public void doSerDesWithObjectMapper_webauthnRegisterChallenge() throws JsonProcessingException {
-		doSerDesWithObjectMapper(objectMapper(), publicKeyCredentialCreationOptions());
+		final ObjectMapper objectMapper = objectMapper();
+		objectMapper.registerModule(new WebauthnJackson2Module());
+		addMyWebauthnMixins(objectMapper);
+		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialCreationOptions());
 	}
 
 	@Test
 	public void doSerDesWithObjectMapper_webauthnAuthenticateChallenge() throws JsonProcessingException {
-		doSerDesWithObjectMapper(objectMapper(), publicKeyCredentialRequestOptions());
+		final ObjectMapper objectMapper = objectMapper();
+		objectMapper.registerModule(new WebauthnJackson2Module());
+		addMyWebauthnMixins(objectMapper);
+		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialRequestOptions());
 	}
 
 	@Test
@@ -77,9 +138,35 @@ public class WebauthnMixinIT {
 	private static void doSerDesWithObjectMapper(final ObjectMapper objectMapper, final Object object) throws JsonProcessingException {
 		final String serialized = objectMapper.writeValueAsString(object);
 		log.info("Serialized: {}", serialized);
-		final Object deserialized = objectMapper.readValue(serialized, PublicKeyCredentialRequestOptions.class);
+		final Object deserialized = objectMapper.readValue(serialized, object.getClass());
 		log.info("Deserialized: {}\n", deserialized);
 		Assertions.assertEquals(object, deserialized);
+	}
+
+	public static void addMyWebauthnMixins(final ObjectMapper objectMapper) {
+//        objectMapper.addMixIn(Bytes.class, WebauthnBytesMixIn.class);
+
+		objectMapper.addMixIn(PublicKeyCredentialCreationOptions.class, PublicKeyCredentialCreationOptionsMixIn.class);
+		objectMapper.addMixIn(ImmutablePublicKeyCredentialUserEntity.class, PublicKeyCredentialUserEntityMixIn.class);
+        objectMapper.addMixIn(PublicKeyCredentialUserEntity.class, PublicKeyCredentialUserEntityMixIn.class);
+		objectMapper.addMixIn(PublicKeyCredentialRpEntity.class, PublicKeyCredentialRpEntityMixIn.class);
+		objectMapper.addMixIn(PublicKeyCredentialParameters.class, PublicKeyCredentialParametersMixIn.class);
+//        objectMapper.addMixIn(PublicKeyCredentialType.class, PublicKeyCredentialTypeMixIn.class);
+//        objectMapper.addMixIn(COSEAlgorithmIdentifier.class, COSEAlgorithmIdentifierMixIn.class);
+		objectMapper.addMixIn(AuthenticatorSelectionCriteria.class, AuthenticatorSelectionCriteriaMixIn.class);
+//        objectMapper.addMixIn(AttestationConveyancePreference.class, AttestationConveyancePreferenceMixIn.class);
+//        objectMapper.addMixIn(AuthenticatorAttachment.class, AuthenticatorAttachmentMixIn.class);
+//        objectMapper.addMixIn(ResidentKeyRequirement.class, ResidentKeyRequirementMixIn.class);
+//        objectMapper.addMixIn(UserVerificationRequirement.class, UserVerificationRequirementMixIn.class);
+//
+		objectMapper.addMixIn(PublicKeyCredentialRequestOptions.class, PublicKeyCredentialRequestOptionsMixIn.class);
+		objectMapper.addMixIn(ImmutableAuthenticationExtensionsClientInputs.class, AuthenticationExtensionsClientInputsMixIn.class);
+		objectMapper.addMixIn(AuthenticationExtensionsClientInputs.class, AuthenticationExtensionsClientInputsMixIn.class);
+		objectMapper.addMixIn(AuthenticationExtensionsClientInput.class, AuthenticationExtensionsClientInputMixIn.class);
+		objectMapper.addMixIn(PublicKeyCredentialDescriptor.class, PublicKeyCredentialDescriptorMixIn.class);
+//        objectMapper.addMixIn(AuthenticatorTransport.class, AuthenticatorTransportMixIn.class);
+		objectMapper.addMixIn(CredProtectAuthenticationExtensionsClientInput.class, CredProtectAuthenticationExtensionsClientInputMixIn.class);
+		objectMapper.addMixIn(CredProtect.class, CredProtectMixIn.class);
 	}
 
 	@SuppressWarnings({"unchecked"})
@@ -113,14 +200,16 @@ public class WebauthnMixinIT {
 		assertThat(actualAuthentication.getAuthorities()).extracting(GrantedAuthority::getAuthority).containsExactly("ROLE_ADM");
 	}
 
-	public static class MyRedisServer {
+	@Configuration
+	public static class MyRedisServerConfig {
 		@Bean(initMethod="start",destroyMethod="stop")
 		public RedisServer redisServerEmbedded(final Environment environment) throws IOException {
 			return new RedisServer(6379);
 		}
 	}
 
-	public static class MyRedisClient {
+	@Configuration
+	public static class MyRedisClientConfig {
 		@Bean
 		public LettuceConnectionFactory redisConnectionFactory() {
 			return new LettuceConnectionFactory("localhost", 6379);
@@ -176,7 +265,6 @@ public class WebauthnMixinIT {
 
 			// Registers CoreJackson2Module (e.g. SimpleGrantedAuthorityMixin) and many others
 			objectMapper.registerModules(SecurityJackson2Modules.getModules(this.getClass().getClassLoader()));
-			log.info("ObjectMapper Registered Module IDs: {}", objectMapper.getRegisteredModuleIds());
 
 			// Relax deserialization to handle this cryptic Collections$UnmodifiableRandomAccessList nested serialization:
 			//    "authorities" : [ "java.util.Collections$UnmodifiableRandomAccessList", [ {
