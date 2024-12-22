@@ -63,7 +63,7 @@ public final class Givens {
 
 	public static ObjectMapper objectMapper(
 		final boolean addDefaultSecurityModules,
-		final boolean relaxTrainingTokensConstraint,
+		final boolean ignoreTrailingTokens,
 		final boolean overrideDefaultTypingFromDefaultModules,
 		final boolean addMissingSecurityModuleWebauthn,
 		final boolean addMyWebauthnMixins
@@ -91,7 +91,7 @@ public final class Givens {
 			objectMapper.registerModules(SecurityJackson2Modules.getModules(CLASS_LOADER));
 		}
 
-		if (relaxTrainingTokensConstraint) {
+		if (ignoreTrailingTokens) {
 			// Relax deserialization to handle this cryptic Collections$UnmodifiableRandomAccessList nested serialization:
 			//    "authorities" : [ "java.util.Collections$UnmodifiableRandomAccessList", [ {
 			//      "@class" : "org.springframework.security.core.authority.SimpleGrantedAuthority",

@@ -64,7 +64,7 @@ public class WebauthnMixinsIT {
 		}
 	}
 
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue1.RedisSerializerIssue1Config.class })
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue1.Config.class })
 	@Order(1)
 	@Nested
 	public class RedisSerializerIssue1 {
@@ -72,8 +72,8 @@ public class WebauthnMixinsIT {
 		private SessionRepository sessionRepository;
 
 		@Configuration
-		public static class RedisSerializerIssue1Config extends MyAbstractRedisClientConfig {
-			public RedisSerializerIssue1Config() {
+		public static class Config extends MyAbstractRedisClientConfig {
+			public Config() {
 				super(objectMapper(true, true, true, false, false));
 			}
 		}
@@ -90,7 +90,7 @@ public class WebauthnMixinsIT {
 		}
 	}
 
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue2.RedisSerializerIssue2Config.class })
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue2.Config.class })
 	@Order(2)
 	@Nested
 	public class RedisSerializerIssue2 {
@@ -98,8 +98,8 @@ public class WebauthnMixinsIT {
 		private SessionRepository sessionRepository;
 
 		@Configuration
-		public static class RedisSerializerIssue2Config extends MyAbstractRedisClientConfig {
-			public RedisSerializerIssue2Config() {
+		public static class Config extends MyAbstractRedisClientConfig {
+			public Config() {
 				super(objectMapper(true, true, true, true, false));
 			}
 		}
@@ -117,7 +117,7 @@ public class WebauthnMixinsIT {
 		}
 	}
 
-	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerWorkarounds.MyRedisClientConfigWorking.class })
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerWorkarounds.Config.class })
 	@Order(3)
 	@Nested
 	public class RedisSerializerWorkarounds {
@@ -125,8 +125,8 @@ public class WebauthnMixinsIT {
 		private SessionRepository sessionRepository;
 
 		@Configuration
-		public static class MyRedisClientConfigWorking extends MyAbstractRedisClientConfig {
-			public MyRedisClientConfigWorking() {
+		public static class Config extends MyAbstractRedisClientConfig {
+			public Config() {
 				super(objectMapper(true, true, true, true, true));
 			}
 		}
