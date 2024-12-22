@@ -9,17 +9,17 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.AuthenticationExtensionsClientInputMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.AuthenticationExtensionsClientInputsMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.AuthenticatorSelectionCriteriaMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.CredProtectAuthenticationExtensionsClientInputMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.CredProtectMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialCreationOptionsMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialDescriptorMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialParametersMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialRequestOptionsMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialRpEntityMixIn;
-import com.justincranford.springsecurity.webauthn.redis.WebauthnMixins.PublicKeyCredentialUserEntityMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.AuthenticationExtensionsClientInputMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.AuthenticationExtensionsClientInputsMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.AuthenticatorSelectionCriteriaMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.CredProtectAuthenticationExtensionsClientInputMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.CredProtectMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.PublicKeyCredentialCreationOptionsMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.PublicKeyCredentialDescriptorMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.PublicKeyCredentialParametersMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.PublicKeyCredentialRequestOptionsMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.PublicKeyCredentialRpEntityMixIn;
+import com.justincranford.springsecurity.webauthn.redis.MyWebauthnMixins.PublicKeyCredentialUserEntityMixIn;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,12 +54,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 @NoArgsConstructor(access=AccessLevel.PRIVATE)
 @Slf4j
-public final class Givens {
-	private static final ClassLoader CLASS_LOADER = Givens.class.getClassLoader();
+public final class MyGivens {
+	private static final ClassLoader CLASS_LOADER = MyGivens.class.getClassLoader();
 
 	public static ObjectMapper objectMapper(
 		final boolean addDefaultSecurityModules,

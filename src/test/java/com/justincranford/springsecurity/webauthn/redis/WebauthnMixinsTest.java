@@ -15,9 +15,9 @@ import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import static com.justincranford.springsecurity.webauthn.redis.Givens.objectMapper;
-import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyCredentialCreationOptions;
-import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyCredentialRequestOptions;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.objectMapper;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
@@ -40,7 +40,7 @@ public class WebauthnMixinsTest {
 	@Order(2)
 	@Nested
 	public class ObjectMapperIssue2 {
-		final ObjectMapper objectMapper = objectMapper(true, true, true, false, false);
+		final ObjectMapper objectMapper = objectMapper(true, false, false, false, false);
 		@Test
 		public void doSerDesWithObjectMapper_publicKeyCredentialCreationOptions_allFixes() {
 			final Exception e = Assertions.assertThrows(InvalidDefinitionException.class, () -> doSerDesWithObjectMapper(objectMapper, publicKeyCredentialCreationOptions()));
@@ -56,6 +56,38 @@ public class WebauthnMixinsTest {
 	@Order(3)
 	@Nested
 	public class ObjectMapperIssue3 {
+		final ObjectMapper objectMapper = objectMapper(true, true, false, false, false);
+		@Test
+		public void doSerDesWithObjectMapper_publicKeyCredentialCreationOptions_allFixes() {
+			final Exception e = Assertions.assertThrows(InvalidDefinitionException.class, () -> doSerDesWithObjectMapper(objectMapper, publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Cannot construct instance of `org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions` (no Creators, like default constructor, exist): cannot deserialize from Object value (no delegate- or property-based Creator)");
+		}
+		@Test
+		public void doSerDesWithObjectMapper_publicKeyCredentialRequestOptions_allFixes() {
+			final Exception e = Assertions.assertThrows(InvalidDefinitionException.class, () -> doSerDesWithObjectMapper(objectMapper, publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Cannot construct instance of `org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions` (no Creators, like default constructor, exist): cannot deserialize from Object value (no delegate- or property-based Creator)");
+		}
+	}
+
+	@Order(4)
+	@Nested
+	public class ObjectMapperIssue4 {
+		final ObjectMapper objectMapper = objectMapper(true, true, true, false, false);
+		@Test
+		public void doSerDesWithObjectMapper_publicKeyCredentialCreationOptions_allFixes() {
+			final Exception e = Assertions.assertThrows(InvalidDefinitionException.class, () -> doSerDesWithObjectMapper(objectMapper, publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Cannot construct instance of `org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions` (no Creators, like default constructor, exist): cannot deserialize from Object value (no delegate- or property-based Creator)");
+		}
+		@Test
+		public void doSerDesWithObjectMapper_publicKeyCredentialRequestOptions_allFixes() {
+			final Exception e = Assertions.assertThrows(InvalidDefinitionException.class, () -> doSerDesWithObjectMapper(objectMapper, publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Cannot construct instance of `org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions` (no Creators, like default constructor, exist): cannot deserialize from Object value (no delegate- or property-based Creator)");
+		}
+	}
+
+	@Order(5)
+	@Nested
+	public class ObjectMapperIssue5 {
 		final ObjectMapper objectMapper = objectMapper(true, true, true, true, false);
 		@Test
 		public void doSerDesWithObjectMapper_publicKeyCredentialCreationOptions_allFixes() {
@@ -69,7 +101,7 @@ public class WebauthnMixinsTest {
 		}
 	}
 
-	@Order(4)
+	@Order(6)
 	@Nested
 	public class ObjectMapperWorkarounds {
 		final ObjectMapper objectMapper = objectMapper(true, true, true, true, true);

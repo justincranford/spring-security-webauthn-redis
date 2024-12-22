@@ -41,10 +41,10 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
 
-import static com.justincranford.springsecurity.webauthn.redis.Givens.objectMapper;
-import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyCredentialCreationOptions;
-import static com.justincranford.springsecurity.webauthn.redis.Givens.publicKeyCredentialRequestOptions;
-import static com.justincranford.springsecurity.webauthn.redis.Givens.usernamePasswordAuthenticationToken;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.objectMapper;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
+import static com.justincranford.springsecurity.webauthn.redis.MyGivens.usernamePasswordAuthenticationToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ WebauthnMixinsIT.MyRedisServerConfig.class })
@@ -74,7 +74,7 @@ public class WebauthnMixinsIT {
 		@Configuration
 		public static class Config extends MyAbstractRedisClientConfig {
 			public Config() {
-				super(objectMapper(true, true, true, false, false));
+				super(objectMapper(true, false, false, false, false));
 			}
 		}
 
@@ -100,6 +100,58 @@ public class WebauthnMixinsIT {
 		@Configuration
 		public static class Config extends MyAbstractRedisClientConfig {
 			public Config() {
+				super(objectMapper(true, true, false, false, false));
+			}
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
+		}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
+		}
+	}
+
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue3.Config.class })
+	@Order(3)
+	@Nested
+	public class RedisSerializerIssue3 {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Configuration
+		public static class Config extends MyAbstractRedisClientConfig {
+			public Config() {
+				super(objectMapper(true, true, true, false, false));
+			}
+		}
+
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialCreationOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialCreationOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
+		}
+		@Test
+		public void doSerDesWithRedisSerializer_publicKeyCredentialRequestOptions() {
+			final Exception e = Assertions.assertThrows(SerializationException.class, () -> redisRepositorySaveFindById(this.sessionRepository, "whatever", publicKeyCredentialRequestOptions()));
+			assertThat(e.getMessage()).startsWith("Could not read JSON:Could not resolve subtype of [simple type, class java.lang.Object]: missing type id property '@class'");
+		}
+	}
+
+	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerIssue4.Config.class })
+	@Order(4)
+	@Nested
+	public class RedisSerializerIssue4 {
+		@Autowired
+		private SessionRepository sessionRepository;
+
+		@Configuration
+		public static class Config extends MyAbstractRedisClientConfig {
+			public Config() {
 				super(objectMapper(true, true, true, true, false));
 			}
 		}
@@ -118,7 +170,7 @@ public class WebauthnMixinsIT {
 	}
 
 	@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ RedisSerializerWorkarounds.Config.class })
-	@Order(3)
+	@Order(5)
 	@Nested
 	public class RedisSerializerWorkarounds {
 		@Autowired
