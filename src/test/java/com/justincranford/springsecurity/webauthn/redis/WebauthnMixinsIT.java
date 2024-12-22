@@ -54,9 +54,8 @@ public class WebauthnMixinsIT {
 	@Autowired
 	private SessionRepository sessionRepository;
 
-	// Demo SecurityJackson2Modules.getModules() is missing the security module `WebauthnJackson2Module`
 	@Test
-	public void demo_WebauthnJackson2Module_missingFrom_SecurityJackson2Modules_getModules() {
+	public void demo_security_WebauthnJackson2Module_missingFrom_SecurityJackson2Modules_getModules() {
 		final ObjectMapper objectMapper = new ObjectMapper();
 
 		objectMapper.registerModules(SecurityJackson2Modules.getModules(this.getClass().getClassLoader()));
