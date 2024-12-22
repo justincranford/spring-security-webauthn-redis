@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinsIT.MyRedisClientConfig;
 import com.justincranford.springsecurity.webauthn.redis.WebauthnMixinsIT.MyRedisServerConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
@@ -77,12 +78,13 @@ public class WebauthnMixinsIT {
 		doSerDesWithObjectMapper(objectMapper, publicKeyCredentialRequestOptions());
 	}
 
-	private static void doSerDesWithObjectMapper(final ObjectMapper objectMapper, final Object object) throws JsonProcessingException {
-		final String serialized = objectMapper.writeValueAsString(object);
+	private static void doSerDesWithObjectMapper(final ObjectMapper objectMapper, final Object expected) throws JsonProcessingException {
+		final String serialized = objectMapper.writeValueAsString(expected);
 		log.info("Serialized: {}", serialized);
-		final Object deserialized = objectMapper.readValue(serialized, object.getClass());
-		log.info("Deserialized: {}\n", deserialized);
-//		Assertions.assertEquals(object, deserialized);
+		final Object actual = objectMapper.readValue(serialized, expected.getClass());
+		log.info("Deserialized: {}\n", actual);
+		assertThat(actual).isInstanceOf(expected.getClass());
+//		Assertions.assertEquals(expected, actual); // missing equals in WebAuthn challenge classes
 	}
 
 	@Test
@@ -90,6 +92,7 @@ public class WebauthnMixinsIT {
 		final Object expected = publicKeyCredentialCreationOptions();
 		final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
 		assertThat(actual).isInstanceOf(expected.getClass());
+//		Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
 	}
 
 	@Test
@@ -97,6 +100,7 @@ public class WebauthnMixinsIT {
 		final Object expected = publicKeyCredentialRequestOptions();
 		final Object actual = redisRepositorySaveFindById(this.sessionRepository, "whatever", expected);
 		assertThat(actual).isInstanceOf(expected.getClass());
+//		Assertions.assertEquals(actual, expected); // missing equals in WebAuthn challenge classes
 	}
 
 	@Test
@@ -106,6 +110,8 @@ public class WebauthnMixinsIT {
 		expectedSecurityContext.setAuthentication(expectedAuthentication);
 
 		final SecurityContext actualSecurityContext = (SecurityContext) redisRepositorySaveFindById(this.sessionRepository, HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, expectedSecurityContext);
+
+		assertThat(actualSecurityContext).isEqualTo(expectedSecurityContext);
 		final Authentication actualAuthentication = actualSecurityContext.getAuthentication();
 		assertThat(actualSecurityContext.getAuthentication()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
 		assertThat(actualAuthentication).isEqualTo(expectedAuthentication);
