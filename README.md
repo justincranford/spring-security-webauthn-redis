@@ -95,13 +95,9 @@ Snippet of registering 13 of my own MixIns implemented in [src/test/java/com/jus
 
 4. Issue: `SecurityJackson2Modules` seems to override typing, which causes an issue. Applying a laisse faire override helped, but I don't think that is the best workaround, so I would like to understand how to fix.
 
-See [https://github.com/justincranford/spring-security-webauthn-redis/blob/c131d7f8d975d228021834ff79fbafae992a39a7/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L130](https://github.com/justincranford/spring-security-webauthn-redis/blob/c131d7f8d975d228021834ff79fbafae992a39a7/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L130)
-for the issue:
-```text
-Could not read JSON:The class with java.util.ImmutableCollections$ListN and name of java.util.ImmutableCollections$ListN is not in the allowlist. If you believe this class is safe to deserialize, please provide an explicit mapping using Jackson annotations or by providing a Mixin. If the serialization is only done by a trusted source, you can also enable default typing. See https://github.com/spring-projects/spring-security/issues/4370 for details (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions[\"pubKeyCredParams\"])
-```
+See [https://github.com/justincranford/spring-security-webauthn-redis/blob/c131d7f8d975d228021834ff79fbafae992a39a7/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L130](https://github.com/justincranford/spring-security-webauthn-redis/blob/c131d7f8d975d228021834ff79fbafae992a39a7/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L130).
 
-Workaround is override default typing after registering `SecurityJackson2Modules.getModules`.
+Workaround was override default typing **after** registering `SecurityJackson2Modules.getModules` and `WebauthnJackson2Module`.
 ```java
     objectMapper.activateDefaultTyping(
         LaissezFaireSubTypeValidator.instance,
@@ -111,6 +107,8 @@ Workaround is override default typing after registering `SecurityJackson2Modules
 ```
 
 5. Issue: `SecurityJackson2Modules` supports [UnmodifiableRandomAccessList](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L236) which serializes OK, but doesn't deserialize OK; it leaves trailing tokens.
+
+See [https://github.com/justincranford/spring-security-webauthn-redis/blob/abb3f8278c1ee052fc0cbe64f889db8cee6f15e8/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L149](https://github.com/justincranford/spring-security-webauthn-redis/blob/abb3f8278c1ee052fc0cbe64f889db8cee6f15e8/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L149).
 
 Workaround: `Set DeserializationFeature.FAIL_ON_TRAILING_TOKENS` to false.
 ```java
