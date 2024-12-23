@@ -9,16 +9,16 @@ I applied until I got something working.
 
 # Summary
 
-1. Issue: Redis DefaultSerializer can't serialize Spring Security WebAuthn `PublicKeyCredentialCreationOptions` and `PublicKeyCredentialRequestOptions`, because they won't implement the Serializable interface.
-2. Issue: `SecurityJackson2Modules.getModules` does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
-3. Issue: `WebauthnJackson2Module` does not include MixIns for at least 13 classes.
-4. Issue: I think registering `SecurityJackson2Modules.getModules` is overriding typing and causing an issue, but I don't fully understand how or why it is breaking.
-5. Issue: `WebauthnJackson2Module` includes a Mixin for UnmodifiableRandomAccessList, but it causes training token issue.
-6. Issue: Can't figure out how to apply my `RedisHttpSessionConfiguration` with custom `MySessionIdGenerator`.
+1. Issue: Redis DefaultSerializer can't serialize Spring Security WebAuthn [PublicKeyCredentialCreationOptions.java](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/api/PublicKeyCredentialCreationOptions.java#L35) and [PublicKeyCredentialRequestOptions](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/api/PublicKeyCredentialRequestOptions.java#L35), because they don't implement the Serializable interface.
+2. Issue: [SecurityJackson2Modules.getModules](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L76-L91) does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
+3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, and others are missing some fields.
+4. Issue: SecurityJackson2Modules seems to override typing, which causes an issue. I would like to understand how I can be compatible with it, instead of applying a laisse faire workaround. 
+5. Issue: SecurityJackson2Modules allows [UnmodifiableRandomAccessListMixin](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L236) which serializes OK, but doesn't deserialize OK; it leaves trailing tokens.
+6. Issue: Can't figure out how to apply my `RedisHttpSessionConfiguration` with custom `MySessionIdGenerator`. Please help!
 
 # Details
 
-1. Issue: Redis DefaultSerializer can't serialize Spring Security WebAuthn `PublicKeyCredentialCreationOptions` and `PublicKeyCredentialRequestOptions`, because they won't implement the Serializable interface.
+1. Issue: Redis DefaultSerializer can't serialize Spring Security WebAuthn [PublicKeyCredentialCreationOptions.java](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/api/PublicKeyCredentialCreationOptions.java#L35) and [PublicKeyCredentialRequestOptions](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/api/PublicKeyCredentialRequestOptions.java#L35), because they don't implement the Serializable interface.
 
 Reproduced in [`src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisDefaultSerializerIT.java`](src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisDefaultSerializerIT.java).
 
@@ -61,14 +61,14 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 ```
 
 
-2. Issue: `SecurityJackson2Modules.getModules` does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
+2. Issue: [SecurityJackson2Modules.getModules](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L76-L91) does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
 
 Workaround is to register WebauthnJackson2Module myself:
 ```java
     objectMapper.registerModule(new WebauthnJackson2Module());
 ```
 
-3. Issue: `WebauthnJackson2Module` does not include MixIns for at least 13 classes.
+3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, and others are missing some fields.
 
 Workaround is to add my 13 of my own mixins.
 
@@ -93,7 +93,7 @@ Snippet of registering my own MixIns implemented in [src/test/java/com/justincra
     objectMapper.addMixIn(CredProtect.class, CredProtectMixIn.class);
 ```
 
-4. Issue: I think registering `SecurityJackson2Modules.getModules` is overriding typing and causing an issue, but I don't fully understand how or why it is breaking.
+4. Issue: SecurityJackson2Modules seems to override typing, which causes an issue. I would like to understand how I can be compatible with it, instead of applying a laisse faire workaround.
 
 Workaround is override default typing after registering `SecurityJackson2Modules.getModules`.
 ```java
@@ -104,7 +104,7 @@ Workaround is override default typing after registering `SecurityJackson2Modules
     );
 ```
 
-5. Issue: `WebauthnJackson2Module` includes a Mixin for UnmodifiableRandomAccessList, but it causes training token issue.
+5. Issue: SecurityJackson2Modules allows [UnmodifiableRandomAccessListMixin](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L236) which serializes OK, but doesn't deserialize OK; it leaves trailing tokens.
 
 Workaround: `Set DeserializationFeature.FAIL_ON_TRAILING_TOKENS` to false.
 ```java
