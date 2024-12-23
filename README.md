@@ -71,12 +71,11 @@ Workaround is to register WebauthnJackson2Module myself:
 
 3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, and some MixIns are missing fields.
 
-Workaround is to add my 13 of my own mixins.
+Workaround is to add 13 of my own mixins after registering `WebauthnJackson2Module`.
 
-See [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java) for
-test instances of PublicKeyCredentialCreationOptions and PublicKeyCredentialRequestOptions.
+Test instances of `PublicKeyCredentialCreationOptions` and `PublicKeyCredentialRequestOptions` are available from [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java).
 
-Snippet of registering my own MixIns implemented in [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java).
+Snippet of registering 13 of my own MixIns implemented in [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java).
 ```java
     objectMapper.addMixIn(PublicKeyCredentialCreationOptions.class, PublicKeyCredentialCreationOptionsMixIn.class);
     objectMapper.addMixIn(ImmutablePublicKeyCredentialUserEntity.class, PublicKeyCredentialUserEntityMixIn.class);
@@ -95,6 +94,12 @@ Snippet of registering my own MixIns implemented in [src/test/java/com/justincra
 ```
 
 4. Issue: `SecurityJackson2Modules` seems to override typing, which causes an issue. Applying a laisse faire override helped, but I don't think that is the best workaround, so I would like to understand how to fix.
+
+See [https://github.com/justincranford/spring-security-webauthn-redis/blob/c131d7f8d975d228021834ff79fbafae992a39a7/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L130](https://github.com/justincranford/spring-security-webauthn-redis/blob/c131d7f8d975d228021834ff79fbafae992a39a7/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L130)
+for the issue:
+```text
+Could not read JSON:The class with java.util.ImmutableCollections$ListN and name of java.util.ImmutableCollections$ListN is not in the allowlist. If you believe this class is safe to deserialize, please provide an explicit mapping using Jackson annotations or by providing a Mixin. If the serialization is only done by a trusted source, you can also enable default typing. See https://github.com/spring-projects/spring-security/issues/4370 for details (through reference chain: org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions[\"pubKeyCredParams\"])
+```
 
 Workaround is override default typing after registering `SecurityJackson2Modules.getModules`.
 ```java
