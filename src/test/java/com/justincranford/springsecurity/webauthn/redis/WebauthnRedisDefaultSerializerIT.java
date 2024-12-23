@@ -21,7 +21,7 @@ import static com.justincranford.springsecurity.webauthn.redis.util.MyGivens.pub
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings({"unused"})
-public class WebauthnRedisJdkSerializationIT extends AbstractRedisServerIT {
+public class WebauthnRedisDefaultSerializerIT extends AbstractRedisServerIT {
 	@Configuration
 	public static class MyRedisClientConfig {
 		@Bean

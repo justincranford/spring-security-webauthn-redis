@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SuppressWarnings({"unused"})
-public class WebauthnRedisObjectMapperMixinsIT extends AbstractRedisServerIT {
+public class WebauthnRedisObjectMapperSerializerIT extends AbstractRedisServerIT {
 	// ObjectMapper instances with 0-5 fixes to be injected into Redis Configuration classes
 	private static final ObjectMapper OBJECT_MAPPER0 = objectMapper(false, false, false, false, false);
 	private static final ObjectMapper OBJECT_MAPPER1 = objectMapper(true,  false, false, false, false);
