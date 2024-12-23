@@ -10,8 +10,8 @@ I applied until I got something working.
 # Summary
 
 1. Issue: Redis [defaultSerializer](https://github.com/spring-projects/spring-session/blob/a2efffe9bc6122f9f31a1192d704589970a5de84/spring-session-data-redis/src/main/java/org/springframework/session/data/redis/RedisIndexedSessionRepository.java#L324) can't serialize Spring Security WebAuthn [PublicKeyCredentialCreationOptions.java](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/api/PublicKeyCredentialCreationOptions.java#L35) and [PublicKeyCredentialRequestOptions](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/api/PublicKeyCredentialRequestOptions.java#L35), because they don't implement the Serializable interface.
-2. Issue: [SecurityJackson2Modules.getModules](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L76-L91) does not include `WebauthnJackson2Module`, even though teh name and package imply it is a Spring Security Jackson2 module.
-3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, while others are missing some fields.
+2. Issue: [SecurityJackson2Modules.getModules](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L76-L91) does not include `WebauthnJackson2Module`, even though the name and package imply it is a Spring Security Jackson2 module.
+3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, and some MixIns are missing fields.
 4. Issue: `SecurityJackson2Modules` seems to override typing, which causes an issue. Applying a laisse faire override helped, but I don't think that is the best workaround, so I would like to understand how to fix.
 5. Issue: `SecurityJackson2Modules` supports [UnmodifiableRandomAccessList](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L236) which serializes OK, but doesn't deserialize OK; it leaves trailing tokens.
 6. Issue: Please help me apply my custom [RedisHttpSessionConfiguration](https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234). I want to use my custom `MySessionIdGenerator`, but I can't figure out how to apply my custom config.
@@ -62,14 +62,14 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 ```
 
 
-2. Issue: [SecurityJackson2Modules.getModules](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L76-L91) does not include `WebauthnJackson2Module`, even though teh name and package imply it is a Spring Security Jackson2 module.
+2. Issue: [SecurityJackson2Modules.getModules](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L76-L91) does not include `WebauthnJackson2Module`, even though the name and package imply it is a Spring Security Jackson2 module.
 
 Workaround is to register WebauthnJackson2Module myself:
 ```java
     objectMapper.registerModule(new WebauthnJackson2Module());
 ```
 
-3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, while others are missing some fields.
+3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, and some MixIns are missing fields.
 
 Workaround is to add my 13 of my own mixins.
 
