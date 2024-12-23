@@ -17,15 +17,15 @@ import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
-import static com.justincranford.springsecurity.webauthn.redis.ObjectMapperFactory.objectMapper;
+import static com.justincranford.springsecurity.webauthn.redis.util.MyGivens.publicKeyCredentialCreationOptions;
+import static com.justincranford.springsecurity.webauthn.redis.util.MyGivens.publicKeyCredentialRequestOptions;
+import static com.justincranford.springsecurity.webauthn.redis.util.ObjectMapperFactory.objectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 @Slf4j
-public class WebauthnMixinsTest {
+public class WebauthnObjectMapperMixinsTest {
 	// ObjectMapper instances with 0-5 fixes to be used for direct serialization and deserialization
 	private static final ObjectMapper OBJECT_MAPPER0 = objectMapper(false, false, false, false, false);
 	private static final ObjectMapper OBJECT_MAPPER1 = objectMapper(true,  false, false, false, false);

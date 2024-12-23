@@ -1,14 +1,13 @@
 package com.justincranford.springsecurity.webauthn.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.justincranford.springsecurity.webauthn.redis.util.MySessionIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestClassOrder;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,32 +26,25 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.codec.Hex;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.data.redis.RedisSessionRepository;
 import org.springframework.session.data.redis.config.annotation.SpringSessionRedisConnectionFactory;
 import org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
-import java.util.Base64;
 
 import static com.justincranford.springsecurity.webauthn.redis.EmbeddedRedisServerConfig.REDIS_SERVER_ADDRESS;
 import static com.justincranford.springsecurity.webauthn.redis.EmbeddedRedisServerConfig.REDIS_SERVER_PORT;
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialCreationOptions;
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.publicKeyCredentialRequestOptions;
-import static com.justincranford.springsecurity.webauthn.redis.MyGivens.usernamePasswordAuthenticationToken;
-import static com.justincranford.springsecurity.webauthn.redis.ObjectMapperFactory.objectMapper;
+import static com.justincranford.springsecurity.webauthn.redis.util.MyGivens.publicKeyCredentialCreationOptions;
+import static com.justincranford.springsecurity.webauthn.redis.util.MyGivens.publicKeyCredentialRequestOptions;
+import static com.justincranford.springsecurity.webauthn.redis.util.MyGivens.usernamePasswordAuthenticationToken;
+import static com.justincranford.springsecurity.webauthn.redis.util.ObjectMapperFactory.objectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment=WebEnvironment.NONE, classes={ EmbeddedRedisServerConfig.class })
-@TestClassOrder(ClassOrderer.OrderAnnotation.class)
-@ActiveProfiles({"test"})
 @Slf4j
 @SuppressWarnings({"unused"})
-public class WebauthnMixinsIT {
+public class WebauthnRedisObjectMapperMixinsIT extends AbstractRedisServerIT {
 	// ObjectMapper instances with 0-5 fixes to be injected into Redis Configuration classes
 	private static final ObjectMapper OBJECT_MAPPER0 = objectMapper(false, false, false, false, false);
 	private static final ObjectMapper OBJECT_MAPPER1 = objectMapper(true,  false, false, false, false);
@@ -199,25 +191,6 @@ public class WebauthnMixinsIT {
 			assertThat(actualSecurityContext.getAuthentication()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
 			assertThat(actualAuthentication).isEqualTo(expectedAuthentication);
 		}
-	}
-
-	private static Object redisRepository_save_then_findById(final SessionRepository sessionRepository, final String key, final Object value) {
-		final Session session = sessionRepository.createSession();
-		session.setAttribute(key, value);
-
-		final String sessionId = session.getId();
-		log.info("Session ID (Base64-URL): {}", sessionId);
-		final byte[] sessionIdBytes = Base64.getUrlDecoder().decode(sessionId);
-		log.info("Session ID (HEX):        {}", Hex.encode(sessionIdBytes));
-
-		sessionRepository.save(session); // serialize
-		final Session retrievedSession = sessionRepository.findById(sessionId); // deserialize
-
-		assertThat(retrievedSession).isNotNull();
-		final Object retrievedValue = retrievedSession.getAttribute(key);
-		assertThat(retrievedValue).isInstanceOf(value.getClass());
-
-		return retrievedValue;
 	}
 
 	// Inject different ObjectMapper instances to be used by RedisSerializer<Object>, for setHashValueSerializer and setValueSerializer
