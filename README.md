@@ -24,6 +24,8 @@ Reproduced in [`src/test/java/com/justincranford/springsecurity/webauthn/redis/W
 
 Workaround was to override default RedisSerializer from `JdkSerializationRedisSerializer` to `GenericJackson2JsonRedisSerializer`.
 
+## Workaround to use `GenericJackson2JsonRedisSerializer`
+
 ObjectMapper instance created in:
 [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java)
  
