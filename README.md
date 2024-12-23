@@ -4,9 +4,10 @@ Demonstrate the bugs I encountered trying to get
 Spring Security 6.4.1 WebAuthn classes to serialize and deserialize
 in a RedisSessionRepository.
 
-Includes all of the workarounds I added to get it running.
+I included ITs and UTs to reproduce issues, and show incremental workarounds
+I applied until I got something working.
 
-# Issues
+# Summary
 
 1. Issue: Redis DefaultSerializer can't serialize Spring Security WebAuthn `PublicKeyCredentialCreationOptions` and `PublicKeyCredentialRequestOptions`, because they won't implement the Serializable interface.
 2. Issue: `SecurityJackson2Modules.getModules` does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
