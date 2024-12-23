@@ -26,10 +26,10 @@ Workaround was to override default RedisSerializer from `JdkSerializationRedisSe
 
 ## Workaround to use `GenericJackson2JsonRedisSerializer`
 
-ObjectMapper instance created in:
+ObjectMapper instances, with various incremental workarounds, are created in:
 [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java)
  
-ObjectMapper instance injected into Redis Configuration classes to verify if it works.
+ObjectMapper instances are injected into Redis Configuration classes to demonstrate each incremental workaround, until enough workarounds are applied to make Redis serialize Spring Security WebAuthn classes OK.
 [src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java).
 
 Workaround snippet:
