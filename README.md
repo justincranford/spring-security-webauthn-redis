@@ -1,17 +1,25 @@
 # Overview
-Demonstrate all the customizations and workarounds I had to perform to get
-Spring Security 6.4.1 WebAuthn classes to serialize and deserialize in a RedisSessionRepository.
+Demonstrate the bugs I encountered trying to get
+Spring Security 6.4.1 WebAuthn classes to serialize and deserialize
+in a RedisSessionRepository.
+<P>
+Includes all of the workarounds I added to get it running.
 
 # Issues
 
-1. Redis DefaultSerializer: WebAuthn PublicKeyCredentialCreationOptions and PublicKeyCredentialCreationOptions cannot be serialized due to missing Serializable interface.
+1. Issue: Redis DefaultSerializer can't serialize Spring Security WebAuthn `PublicKeyCredentialCreationOptions` and `PublicKeyCredentialRequestOptions`, because they won't implement the Serializable interface.
 
-a. Reproduced by [`src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisDefaultSerializerIT.java`](src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisDefaultSerializerIT.java).
-b. Workaround is to override RedisSerializer to use Jackson2 JSON serialization.
-c. Workaround in:
-- [src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java).
-- [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java)
-d. Workaround snippet:
+Reproduced in [`src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisDefaultSerializerIT.java`](src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisDefaultSerializerIT.java).
+
+Workaround was to override default RedisSerializer from `JdkSerializationRedisSerializer` to `GenericJackson2JsonRedisSerializer`.
+
+ObjectMapper instance created in:
+[src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/ObjectMapperFactory.java)
+ 
+ObjectMapper instance injected into Redis Configuration classes to verify if it works.
+[src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java).
+
+Workaround snippet:
 ```java
 final ObjectMapper objectMapper = new ObjectMapper()
     .registerModule(new JavaTimeModule())
@@ -33,7 +41,8 @@ final ObjectMapper objectMapper = new ObjectMapper()
     ;
     objectMapper.registerModules(org.springframework.security.jackson2.SecurityJackson2Modules.getModules(CLASS_LOADER));
 ```
-e. The last line registered MixIns needed to persist contents of SecurityContext.
+
+The last line registered MixIns needed to persist contents of SecurityContext.
 ```java
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
@@ -41,19 +50,21 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 ```
 
 
-2. Bug: `SecurityJackson2Modules.getModules` does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
+2. Issue: `SecurityJackson2Modules.getModules` does not include `org.springframework.security.web.webauthn.jackson.WebauthnJackson2Module`
 
-a. Workaround is to register WebauthnJackson2Module myself:
+Workaround is to register WebauthnJackson2Module myself:
 ```java
     objectMapper.registerModule(new WebauthnJackson2Module());
 ```
 
-3. Bug: `WebauthnJackson2Module` does not include MixIns for at least 13 classes.
+3. Issue: `WebauthnJackson2Module` does not include MixIns for at least 13 classes.
 
-a. Workaround is to add my 13 of my own mixins.
-b. See [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java) for
+Workaround is to add my 13 of my own mixins.
+
+See [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyGivens.java) for
 test instances of PublicKeyCredentialCreationOptions and PublicKeyCredentialRequestOptions.
-c. Snippet of registering my own MixIns implemented in [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java).
+
+Snippet of registering my own MixIns implemented in [src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java](src/test/java/com/justincranford/springsecurity/webauthn/redis/util/MyWebauthnMixins.java).
 ```java
     objectMapper.addMixIn(PublicKeyCredentialCreationOptions.class, PublicKeyCredentialCreationOptionsMixIn.class);
     objectMapper.addMixIn(ImmutablePublicKeyCredentialUserEntity.class, PublicKeyCredentialUserEntityMixIn.class);
@@ -71,9 +82,9 @@ c. Snippet of registering my own MixIns implemented in [src/test/java/com/justin
     objectMapper.addMixIn(CredProtect.class, CredProtectMixIn.class);
 ```
 
-4. Bug: I think registering `SecurityJackson2Modules.getModules` is overriding typing and causing an issue, but I don't fully understand how or why it is breaking.
+4. Issue: I think registering `SecurityJackson2Modules.getModules` is overriding typing and causing an issue, but I don't fully understand how or why it is breaking.
 
-a. Workaround is override default typing after registering `SecurityJackson2Modules.getModules`.
+Workaround is override default typing after registering `SecurityJackson2Modules.getModules`.
 ```java
     objectMapper.activateDefaultTyping(
         LaissezFaireSubTypeValidator.instance,
@@ -82,9 +93,9 @@ a. Workaround is override default typing after registering `SecurityJackson2Modu
     );
 ```
 
-5. Bug: `WebauthnJackson2Module` includes a Mixin for UnmodifiableRandomAccessList, but it causes training token issue.
+5. Issue: `WebauthnJackson2Module` includes a Mixin for UnmodifiableRandomAccessList, but it causes training token issue.
 
-a. Workaround: `Set DeserializationFeature.FAIL_ON_TRAILING_TOKENS` to false.
+Workaround: `Set DeserializationFeature.FAIL_ON_TRAILING_TOKENS` to false.
 ```java
     // Relax deserialization to handle this cryptic Collections$UnmodifiableRandomAccessList nested serialization:
     //    "authorities" : [ "java.util.Collections$UnmodifiableRandomAccessList", [ {
@@ -93,3 +104,11 @@ a. Workaround: `Set DeserializationFeature.FAIL_ON_TRAILING_TOKENS` to false.
     //    } ] ],
     objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, false);
 ```
+
+6. Issue: Can't figure out how to apply my `RedisHttpSessionConfiguration` with custom `MySessionIdGenerator`.
+
+See [https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234](https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234)
+
+If you could provide guidance that would be great. I couldn't find how to override default config in any official docs.
+
+If you could provide a pointer to source class where an override is applied, that would also be helpful.
