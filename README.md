@@ -55,10 +55,9 @@ final ObjectMapper objectMapper = new ObjectMapper()
     objectMapper.registerModules(org.springframework.security.jackson2.SecurityJackson2Modules.getModules(CLASS_LOADER));
 ```
 
-The last line registered MixIns needed to persist contents of SecurityContext.
+N.B. The last line above adds MixIns needed for two classes typically used in SecurityContext.
 ```java
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 ```
 
