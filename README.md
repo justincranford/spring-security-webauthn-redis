@@ -14,7 +14,7 @@ I applied until I got something working.
 3. Issue: [WebauthnJackson2Module](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/web/src/main/java/org/springframework/security/web/webauthn/jackson/WebauthnJackson2Module.java#L60) is missing some MixIns, while others are missing some fields.
 4. Issue: `SecurityJackson2Modules` seems to override typing, which causes an issue. Applying a laisse faire override helped, but I don't think that is the best workaround, so I would like to understand how to fix.
 5. Issue: `SecurityJackson2Modules` supports [UnmodifiableRandomAccessList](https://github.com/spring-projects/spring-security/blob/fd267dfb71bfc8e1ab5bcc8270c12fbaad46fddf/core/src/main/java/org/springframework/security/jackson2/SecurityJackson2Modules.java#L236) which serializes OK, but doesn't deserialize OK; it leaves trailing tokens.
-6. Issue: Please help me apply my custom [RedisHttpSessionConfiguration](https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234). I want to use my custom `MySessionIdGenerator`, but I can't figure out how to apply the config override.
+6. Issue: Please help me apply my custom [RedisHttpSessionConfiguration](https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234). I want to use my custom `MySessionIdGenerator`, but I can't figure out how to apply my custom config.
 
 # Details
 
@@ -116,7 +116,7 @@ Workaround: `Set DeserializationFeature.FAIL_ON_TRAILING_TOKENS` to false.
     objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, false);
 ```
 
-6. Issue: Please help me apply my custom [RedisHttpSessionConfiguration](https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234). I want to use my custom `MySessionIdGenerator`, but I can't figure out how to apply the config override.
+6. Issue: Please help me apply my custom [RedisHttpSessionConfiguration](https://github.com/justincranford/spring-security-webauthn-redis/blob/d953cff6395604a7cece9d0651d45a79ec3eb439/src/test/java/com/justincranford/springsecurity/webauthn/redis/WebauthnRedisObjectMapperSerializerIT.java#L234). I want to use my custom `MySessionIdGenerator`, but I can't figure out how to apply my custom config.
 
 If you could provide guidance that would be great. I couldn't find how to override default config in any official docs.
 
